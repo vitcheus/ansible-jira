@@ -27,15 +27,16 @@ You can change all variables by group_vars or host_vars
 
 | Variable name | Required* | Description | Default Value |
 | :---: | :---: | :---: | :---: |
-| `jira_version` | **Yes** | Version of the installing jira software | 7.4.1 | 
-| `jira_manage_user` | **No** | Should this role manage the jira user? | true | 
-| `jira_user` | **No** | OS user name | jira | 
-| `jira_group` | **No** | OS group name | jira | 
+| `jira_version` | **Yes** | Version of the installing jira software | 7.4.1 |
+| `jira_manage_user` | **No** | Should this role manage the jira user? | true |
+| `jira_user` | **No** | OS user name | jira |
+| `jira_group` | **No** | OS group name | jira |
+| `jira_database_type`| **Yes** | type of using database  | "postgres" |
 | `jira_session_timeout` | **No** | session duration | 300 |
-| `jira_bin_path` | **No** | jira binary dir | /opt/atlassian/jira | 
-| `jira_data_path` | **No** | jira data dir | /opt/atlassian/application-data/jira | 
-| `jira_jvm_minimum_memory` | **No** | JVM min memory | 1024m | 
-| `jira_jvm_maximum_memory` | **No** | JVM max memory | 2048m | 
+| `jira_bin_path` | **No** | jira binary dir | /opt/atlassian/jira |
+| `jira_data_path` | **No** | jira data dir | /opt/atlassian/application-data/jira |
+| `jira_jvm_minimum_memory` | **No** | JVM min memory | 1024m |
+| `jira_jvm_maximum_memory` | **No** | JVM max memory | 2048m |
 
 If you want use reverse proxy for jira you must set additional setting
 
@@ -46,11 +47,6 @@ If you want use reverse proxy for jira you must set additional setting
 | `jira_catalina_connector_proxyport` | **No** | used proxy port | depends on scheme(80 or 443) |
 | `jira_catalina_connector_secure` | **No** | used secure connection | depends on scheme |
 | `jira_catalina_context_path` | **No** | web path for jira | / |
-
-If you want use mysql DB for jira you must set additional setting
-| Variable name | Required* | Description | Default Value |
-| :---: | :---: | :---: | :---: |
-| `jira_database_type`| **Yes** | type of using database  | "postgres" |
 
 ****Required*** - if "yes", you need to set this parameter under your conditions.
 
