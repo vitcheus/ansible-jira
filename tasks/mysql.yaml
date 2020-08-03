@@ -1,0 +1,51 @@
+---
+- name: "Get installed Mysql driver version"
+  shell: |
+    set -o pipefail
+    find {{ jira_bin_path }}/lib -type f -name *mysql*.jar | xargs basename -s .jar | cut -d'-' -f4
+  args:
+    executable: /bin/bash
+  register: installed_jira_mysql_driver_version
+  changed_when: false
+  check_mode: false
+  when:
+    - not jira_installation is failed
+#    - jira_database_type | default("postgres") | lower == "mysql"
+  tags:
+    - jira
+
+- name: "Fetch latest Mysql DB drivers"
+#  vars:
+#    ansible_python_interpreter: "python3"
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ item.dest }}"
+    checksum: "{{ item.checksum }}"
+    timeout: 300
+  loop:
+    - "{{ mysql_jdbc_download }}"
+  register: get_db_driver_result
+  until: get_db_driver_result is succeeded
+  when: >
+    jira_installation is failed or
+    installed_jira_mysql_driver_version.stdout != _mysql_jdbc_download[mysql_jdbc_version]
+  tags:
+    - jira
+
+- name: "Extract Mysql DB drivers"
+  shell: |
+    set -o pipefail
+    cd {{ jira_bin_path }}/lib
+    rm -rf *mysql*.jar
+    TMP_DIR="$(mktemp -d)" \
+      && tar -zx -C $TMP_DIR -f {{ mysql_jdbc_download.dest }} \
+      && mv $TMP_DIR/*/*mysql*-bin.jar . \
+      && rm -rf $TMP_DIR
+  args:
+    executable: "/bin/bash"
+  when: get_db_driver_result is changed
+  notify:
+    - jira | systemctl daemon-reload
+    - jira | systemctl restart
+  tags:
+    - jira

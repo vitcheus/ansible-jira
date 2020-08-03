@@ -1,0 +1,185 @@
+- name: "Include OS-specific variables"
+  include_vars: "{{ lookup('first_found', params) }}"
+  vars:
+    params:
+      files:
+        - "{{ ansible_os_family }}{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family }}.yml"
+        - "main.yaml"
+      paths:
+        - vars
+  tags:
+    - jira
+
+- name: "Manage user jira"
+  block:
+    - name: "Creating jira user group"
+      group:
+        name: "{{ jira_group }}"
+#        system: true
+
+    - name: "Creating jira user"
+      user:
+        name: "{{ jira_user }}"
+        group: "{{ jira_group }}"
+#        system: yes
+        shell: "/bin/bash"
+        comment: "Account for running Jira Software"
+        createhome: yes
+        state: present
+
+  when: jira_manage_user | bool
+  tags:
+    - jira
+
+- name: "Check existing Jira installation"
+  command: command -v {{ jira_bin_path }}/bin/version.sh
+#  environment:
+#    PATH: "{{ jira_bin_path }}/bin:{{ ansible_env.PATH }}"
+  register: jira_installation
+  changed_when: false
+  ignore_errors: true
+  check_mode: false
+  tags:
+    - jira
+
+- name: "Get installed Jira version"
+  shell: |
+    set -o pipefail
+    find {{ jira_bin_path }}/atlassian-jira/ -type f -name pom.properties | xargs grep -h version | cut -d'=' -f2 | head -n1
+  args:
+    executable: /bin/bash
+  register: installed_jira_version
+  changed_when: false
+  check_mode: false
+  when: not jira_installation is failed
+  tags:
+    - jira
+
+- name: "Compute if installation/backup is required"
+  set_fact:
+    jira_installation_required: "{{ jira_installation is failed or installed_jira_version.stdout != jira_version }}"
+    jira_backup_required: "{{ not jira_installation is failed and installed_jira_version.stdout != jira_version }}"
+  tags:
+    - jira
+
+- name: "Ensure all directories exists"
+  file:
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0755') }}"
+    state: "{{ item.state | default('directory') }}"
+  loop:
+    - { dest: "{{ jira_download.dest | dirname }}" }
+    - { dest: "{{ mysql_jdbc_download.dest | dirname }}" }
+    - { dest: "{{ postgresql_jdbc_download.dest | dirname }}" }
+    - { dest: "{{ jira_bin_path | dirname }}" }
+    - { dest: "{{ jira_data_path | dirname }}" }
+    - dest: "{{ jira_bin_path }}"
+      owner: "{{ jira_user }}"
+      group: "{{ jira_group }}"
+    - dest: "{{ jira_data_path }}"
+      owner: "{{ jira_user }}"
+      group: "{{ jira_group }}"
+  tags:
+    - jira
+
+- name: "Install Jira software"
+  block:
+    - name: "Install prerequisites package"
+      package:
+        name: "{{ jira_os_packages_prerequisites }}"
+        state: "latest"
+        update_cache: yes
+      register: result
+      until: result is succeeded
+
+    - name: "Download Jira archive"
+    #  vars:
+    #    ansible_python_interpreter: "python3"
+      get_url:
+        url: "{{ item.url }}"
+        dest: "{{ item.dest }}"
+        checksum: "{{ item.checksum }}"
+        timeout: 300
+      loop:
+        - "{{ jira_download }}"
+      register: get_url_result
+      until: get_url_result is succeeded
+
+    - name: "Backup existing Jira software"
+      archive:
+        path: "{{ jira_bin_path }}/*"
+        dest: "/tmp/jira_{{ installed_jira_version.stdout }}.tgz"
+        remove: yes
+      when: jira_backup_required | bool
+
+    - name: "Unzip Jira archive"
+      unarchive:
+        remote_src: true
+        src: "{{ jira_download.dest }}"
+        dest: "{{ jira_bin_path }}"
+        owner: "{{ jira_user }}"
+        group: "{{ jira_group }}"
+        extra_opts: ['--strip-components=1']
+        mode: '0755'
+
+  when: jira_installation_required | bool
+  tags:
+    - jira
+
+- include_tasks: mysql.yaml
+  when: jira_database_type | default("postgres") | lower == "mysql"
+
+- include_tasks: postgresql.yaml
+  when: jira_database_type | default("postgres") | lower == "postgres"
+
+- name: "Applying Jira setting"
+  template:
+    dest: "{{ item.dest }}"
+    src: "{{ item.src }}"
+    owner: "{{ item.owner | default('root') }}"
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode | default('0644') }}"
+  loop:
+    - dest: "/etc/systemd/system/jira.service"
+      src: jira.service.j2
+    - dest: "{{ jira_bin_path }}/bin/setenv.sh"
+      src: "setenv.sh.j2"
+      owner: "{{ jira_user }}"
+      group: "{{ jira_group }}"
+      mode: "0755"
+    - dest: "{{ jira_bin_path }}/conf/server.xml"
+      src: "server.xml.j2"
+      owner: "{{ jira_user }}"
+      group: "{{ jira_group }}"
+  notify:
+    - jira | systemctl daemon-reload
+    - jira | systemctl restart
+  tags:
+    - jira
+
+- name: "Set Jira data path"
+  lineinfile:
+    path: "{{ jira_bin_path }}/atlassian-jira/WEB-INF/classes/jira-application.properties"
+    regexp: "^#? ?jira.home=.*$"
+    line: "jira.home={{ jira_data_path }}"
+    state: present
+  tags:
+    - jira
+
+- name: "Ensure Jira is running and enabled"
+  service:
+    name: "jira"
+    state: "started"
+    enabled: true
+#  changed_when: false
+#  ignore_errors: true
+  tags:
+    - jira
+
+#- name: flush handlers
+#  meta: flush_handlers
+#  tags:
+#    - jira

@@ -1,0 +1,20 @@
+{{ ansible_managed | comment }}
+
+[Unit]
+Description=Atlassian Jira
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User={{ jira_user }}
+Group={{ jira_group }}
+ExecStart={{ jira_bin_path }}/bin/start-jira.sh
+ExecStop={{ jira_bin_path }}/bin/stop-jira.sh
+PIDFile={{ jira_bin_path }}/work/catalina.pid
+
+TimeoutSec=200
+#LimitNOFILE=4096
+#LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

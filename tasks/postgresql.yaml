@@ -1,0 +1,43 @@
+- name: "Get installed Postgres driver version"
+  shell: |
+    set -o pipefail
+    find {{ jira_bin_path }}/lib -type f -name *postgresql*.jar | xargs basename -s .jar | cut -d'-' -f2
+  args:
+    executable: /bin/bash
+  register: installed_jira_pgsql_driver_version
+  changed_when: false
+  check_mode: false
+  tags:
+    - jira
+
+- name: "Fetch latest Postgres DB drivers"
+  #  vars:
+  #    ansible_python_interpreter: "python3"
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ item.dest }}"
+    checksum: "{{ item.checksum }}"
+    timeout: 300
+  loop:
+    - "{{ postgresql_jdbc_download }}"
+  register: get_db_driver_result
+  until: get_db_driver_result is succeeded
+  when:
+    - installed_jira_pgsql_driver_version.stdout != _postgresql_jdbc_download[postgresql_jdbc_version]
+  tags:
+    - jira
+
+- name: "Extract Postgres DB drivers"
+  shell: |
+    set -o pipefail
+    cd {{ jira_bin_path }}/lib
+    rm -rf *postgresql*.jar
+    cp {{ postgresql_jdbc_download.dest }} .
+  args:
+    executable: "/bin/bash"
+  when: get_db_driver_result is changed
+  notify:
+    - jira | systemctl daemon-reload
+    - jira | systemctl restart
+  tags:
+    - jira

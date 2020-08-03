@@ -1,0 +1,26 @@
+# rewrite when atlassian provides sha sum on download page
+_jira_download:
+  8.11.0:
+    url: "https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-software-8.11.0.tar.gz"
+    dest: "{{ ansible_user_dir }}/.ansible/tmp/atlassian-jira-software-8.11.0.tar.gz"
+    checksum: "sha1:0d513f7450e526015b50c286d80931551b9a0c24"
+  8.5.6:
+    url: "https://product-downloads.atlassian.com/software/jira/downloads/atlassian-jira-software-8.5.6.tar.gz"
+    dest: "{{ ansible_user_dir }}/.ansible/tmp/atlassian-jira-software-8.5.6.tar.gz"
+    checksum: "sha1:23aa943ab64ee06705a2d1c38fa290da8552fefb"
+
+_mysql_jdbc_download:
+  5.1.49:
+    url: "https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.49.tar.gz"
+    dest: "{{ ansible_user_dir }}/.ansible/tmp/mysql-connector-java-5.1.49.tar.gz"
+    checksum: "sha1:ed8f8574585edfb630b0b6ee4ebf6f6847795c0f"
+
+_postgresql_jdbc_download:
+  42.2.14:
+    url: "https://jdbc.postgresql.org/download/postgresql-42.2.14.jar"
+    dest: "{{ ansible_user_dir }}/.ansible/tmp/postgresql-42.2.14.jar"
+    checksum: "sha1:45fa6eef266aa80024ef2ab3688d9faa38c642e5"
+
+jira_os_packages_prerequisites:
+  - fontconfig
+  - unzip
