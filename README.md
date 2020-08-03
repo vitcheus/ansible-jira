@@ -27,11 +27,11 @@ You can change all variables by group_vars or host_vars
 
 | Variable name | Required* | Description | Default Value |
 | :---: | :---: | :---: | :---: |
-| `jira_version` | **Yes** | Version of the installing jira software | 7.4.1 |
+| `jira_version` | **Yes** | Version of the installing jira software | 8.5.6 |
 | `jira_manage_user` | **No** | Should this role manage the jira user? | true |
 | `jira_user` | **No** | OS user name | jira |
 | `jira_group` | **No** | OS group name | jira |
-| `jira_database_type`| **Yes** | type of using database  | "postgres" |
+| `jira_database_type` | **Yes** | type of using database  | "postgres" |
 | `jira_session_timeout` | **No** | session duration | 300 |
 | `jira_bin_path` | **No** | jira binary dir | /opt/atlassian/jira |
 | `jira_data_path` | **No** | jira data dir | /opt/atlassian/application-data/jira |
